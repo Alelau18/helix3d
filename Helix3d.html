@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helix in R³ — projections on every axis</title>
+<style>
+  :root{
+    --bg:#0b0e1a; --ink:#dfe4ff; --dim:#7b83ad;
+    --curve:#5ee6c8; --point:#ffd166;
+    --xc:#ff6b81; --yc:#6bc5ff; --zc:#c792ff;
+    --axis:#3a4270; --panel:#121629;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font-family:Georgia,serif;overflow:hidden;height:100vh}
+  #c{display:block;cursor:grab}#c:active{cursor:grabbing}
+  header{position:absolute;top:20px;left:24px;pointer-events:none}
+  h1{font-size:1.15rem;font-weight:400}
+  h1 em{color:var(--curve);font-style:normal}
+  .eq{font-family:"Courier New",monospace;font-size:.85rem;color:var(--dim);margin-top:6px}
+  #hud{position:absolute;bottom:20px;left:24px;font-family:"Courier New",monospace;font-size:.85rem;line-height:1.7;color:var(--dim)}
+  .vx{color:var(--xc)}.vy{color:var(--yc)}.vz{color:var(--zc)}.vp{color:var(--point)}
+  .ctrl{position:absolute;bottom:20px;right:24px;display:flex;gap:10px;align-items:center;font-family:"Courier New",monospace;font-size:.8rem;color:var(--dim);flex-wrap:wrap;justify-content:flex-end}
+  button{background:var(--panel);color:var(--ink);border:1px solid var(--axis);padding:6px 14px;font-family:inherit;cursor:pointer;border-radius:4px}
+  button:hover{border-color:var(--curve)}
+  button.on{border-color:var(--curve);color:var(--curve)}
+  input[type=range]{accent-color:var(--curve)}
+  .hint{position:absolute;top:20px;right:24px;color:var(--dim);font-size:.75rem;font-family:"Courier New",monospace;text-align:right;line-height:1.6}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<header>
+  <h1>Helix in <em>ℝ³</em> — with axis projections</h1>
+  <div class="eq">x = cos t &nbsp; y = sin t &nbsp; z = t</div>
+</header>
+<div class="hint">drag to rotate · scroll to zoom</div>
+<div id="hud">
+  t = <span class="vp" id="tv">0.00</span><br>
+  <span class="vx">x-axis: (cos t, 0, 0) = (<span id="xv">1.00</span>, 0, 0)</span><br>
+  <span class="vy">y-axis: (0, sin t, 0) = (0, <span id="yv">0.00</span>, 0)</span><br>
+  <span class="vz">z-axis: (0, 0, t) = (0, 0, <span id="zv">0.00</span>)</span>
+</div>
+<div class="ctrl">
+  <button id="tgP" class="on">planes</button>
+  <label>speed <input id="spd" type="range" min="0.2" max="3" step="0.1" value="1"></label>
+  <button id="pp">pause</button>
+  <button id="rst">restart</button>
+</div>
+<script>
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+let W,H;function rs(){W=cv.width=innerWidth;H=cv.height=innerHeight}rs();addEventListener('resize',rs);
+
+const TMAX=8*Math.PI, ZS=0.28;
+let t=0,playing=true,speed=1,showPlanes=true;
+let yaw=0.9,pitch=0.35,zoom=90,autoRot=true;
+
+function proj(x,y,z){
+  z*=ZS; z-=TMAX*ZS/2;
+  const cx=Math.cos(yaw),sx=Math.sin(yaw);
+  let X=x*cx-y*sx, Y=x*sx+y*cx, Z=z;
+  const cp=Math.cos(pitch),sp=Math.sin(pitch);
+  const Y2=Y*cp-Z*sp, Z2=Y*sp+Z*cp;
+  const f=6/(6-Y2*0.15);
+  return [W/2+X*zoom*f, H/2-Z2*zoom*f];
+}
+function line3(a,b,col,w=1,dash){
+  const p=proj(...a),q=proj(...b);
+  ctx.strokeStyle=col;ctx.lineWidth=w;
+  if(dash)ctx.setLineDash(dash);
+  ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(q[0],q[1]);ctx.stroke();
+  ctx.setLineDash([]);
+}
+function dot3(x,y,z,col,r=4){
+  const p=proj(x,y,z);
+  ctx.fillStyle=col;ctx.beginPath();ctx.arc(p[0],p[1],r,0,7);ctx.fill();
+}
+function label(x,y,z,txt,col='#7b83ad'){
+  const p=proj(x,y,z);
+  ctx.fillStyle=col;ctx.font='13px Courier New';
+  ctx.fillText(txt,p[0]+7,p[1]-7);
+}
+function curve3(fn,t0,t1,col,w=1.5,alpha=1,dash){
+  const N=Math.max(2,Math.floor((t1-t0)*20));
+  ctx.globalAlpha=alpha;ctx.strokeStyle=col;ctx.lineWidth=w;
+  if(dash)ctx.setLineDash(dash);
+  ctx.beginPath();
+  for(let i=0;i<=N;i++){
+    const u=t0+(t1-t0)*i/N,p=proj(...fn(u));
+    i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]);
+  }
+  ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+}
+
+function draw(){
+  ctx.fillStyle='#0b0e1a';ctx.fillRect(0,0,W,H);
+  const x=Math.cos(t),y=Math.sin(t);
+
+  // axes through origin (z=0 base)
+  line3([-1.8,0,0],[1.8,0,0],'#3a4270',1.2);
+  line3([0,-1.8,0],[0,1.8,0],'#3a4270',1.2);
+  line3([0,0,-1.5],[0,0,TMAX+1.5],'#3a4270',1.2);
+  label(1.8,0,0,'x','#ff6b81');label(0,1.8,0,'y','#6bc5ff');label(0,0,TMAX+1.5,'z','#c792ff');
+
+  if(showPlanes){
+    // shadow traces on coordinate planes, up to current t
+    // xy-plane (z=0): the unit circle path (cos t, sin t, 0)
+    curve3(u=>[Math.cos(u),Math.sin(u),0],0,Math.min(t,2*Math.PI),'rgba(94,230,200,0.45)',1.2);
+    // xz-plane (y=0): (cos t, 0, t)  — cosine wave
+    curve3(u=>[Math.cos(u),0,u],0,t,'rgba(255,107,129,0.5)',1.2);
+    // yz-plane (x=0): (0, sin t, t)  — sine wave
+    curve3(u=>[0,Math.sin(u),u],0,t,'rgba(107,197,255,0.5)',1.2);
+  }
+
+  // helix trail
+  for(const [w,a] of [[6,0.12],[2,1]])
+    curve3(u=>[Math.cos(u),Math.sin(u),u],0,t,'#5ee6c8',w,a);
+
+  // ---- projections of the moving point P=(x,y,t) ----
+  // onto x-axis: (x,0,0)
+  line3([x,y,t],[x,0,0],'rgba(255,107,129,0.55)',1,[5,4]);
+  dot3(x,0,0,'#ff6b81',4.5);
+  // onto y-axis: (0,y,0)
+  line3([x,y,t],[0,y,0],'rgba(107,197,255,0.55)',1,[5,4]);
+  dot3(0,y,0,'#6bc5ff',4.5);
+  // onto z-axis: (0,0,t)
+  line3([x,y,t],[0,0,t],'rgba(199,146,255,0.55)',1,[5,4]);
+  dot3(0,0,t,'#c792ff',4.5);
+  // projection onto xy-plane (helps read x & y): (x,y,0)
+  line3([x,y,t],[x,y,0],'rgba(255,209,102,0.28)',1,[2,4]);
+  dot3(x,y,0,'rgba(255,209,102,0.6)',3);
+  line3([x,y,0],[x,0,0],'rgba(255,107,129,0.3)',1,[2,4]);
+  line3([x,y,0],[0,y,0],'rgba(107,197,255,0.3)',1,[2,4]);
+
+  // moving point
+  const p=proj(x,y,t);
+  ctx.fillStyle='#ffd166';ctx.beginPath();ctx.arc(p[0],p[1],5.5,0,7);ctx.fill();
+  ctx.strokeStyle='rgba(255,209,102,0.35)';ctx.lineWidth=8;
+  ctx.beginPath();ctx.arc(p[0],p[1],5.5,0,7);ctx.stroke();
+
+  tv.textContent=t.toFixed(2);
+  xv.textContent=x.toFixed(2);yv.textContent=y.toFixed(2);zv.textContent=t.toFixed(2);
+}
+
+let last=performance.now();
+function loop(now){
+  const dt=(now-last)/1000;last=now;
+  if(playing){t+=dt*1.5*speed;if(t>TMAX)t=0;}
+  if(autoRot)yaw+=dt*0.12;
+  draw();requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+let drag=false,px,py;
+cv.addEventListener('pointerdown',e=>{drag=true;autoRot=false;px=e.clientX;py=e.clientY});
+addEventListener('pointerup',()=>drag=false);
+addEventListener('pointermove',e=>{
+  if(!drag)return;
+  yaw+=(e.clientX-px)*0.008;
+  pitch=Math.max(-1.4,Math.min(1.4,pitch+(e.clientY-py)*0.008));
+  px=e.clientX;py=e.clientY;
+});
+cv.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(30,Math.min(300,zoom*(e.deltaY<0?1.1:0.9)))},{passive:false});
+pp.onclick=()=>{playing=!playing;pp.textContent=playing?'pause':'play'};
+rst.onclick=()=>{t=0};
+spd.oninput=e=>speed=+e.target.value;
+tgP.onclick=()=>{showPlanes=!showPlanes;tgP.classList.toggle('on')};
+</script>
+</body>
+</html>
