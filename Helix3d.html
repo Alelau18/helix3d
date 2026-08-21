@@ -15,17 +15,17 @@
   body{background:var(--bg);color:var(--ink);font-family:Georgia,serif;overflow:hidden;height:100vh}
   #c{display:block;cursor:grab}#c:active{cursor:grabbing}
   header{position:absolute;top:20px;left:24px;pointer-events:none}
-  h1{font-size:1.15rem;font-weight:400}
+  h1{font-size:1.6rem;font-weight:400}
   h1 em{color:var(--curve);font-style:normal}
-  .eq{font-family:"Courier New",monospace;font-size:.85rem;color:var(--dim);margin-top:6px}
-  #hud{position:absolute;bottom:20px;left:24px;font-family:"Courier New",monospace;font-size:.85rem;line-height:1.7;color:var(--dim)}
+  .eq{font-family:"Courier New",monospace;font-size:1.05rem;color:var(--dim);margin-top:6px}
+  #hud{position:absolute;bottom:20px;left:24px;font-family:"Courier New",monospace;font-size:1.05rem;line-height:1.7;color:var(--dim)}
   .vx{color:var(--xc)}.vy{color:var(--yc)}.vz{color:var(--zc)}.vp{color:var(--point)}
-  .ctrl{position:absolute;bottom:20px;right:24px;display:flex;gap:10px;align-items:center;font-family:"Courier New",monospace;font-size:.8rem;color:var(--dim);flex-wrap:wrap;justify-content:flex-end}
-  button{background:var(--panel);color:var(--ink);border:1px solid var(--axis);padding:6px 14px;font-family:inherit;cursor:pointer;border-radius:4px}
+  .ctrl{position:absolute;bottom:20px;right:24px;display:flex;gap:10px;align-items:center;font-family:"Courier New",monospace;font-size:1rem;color:var(--dim);flex-wrap:wrap;justify-content:flex-end}
+  button{background:var(--panel);color:var(--ink);border:1px solid var(--axis);padding:8px 18px;font-family:inherit;cursor:pointer;border-radius:4px}
   button:hover{border-color:var(--curve)}
   button.on{border-color:var(--curve);color:var(--curve)}
   input[type=range]{accent-color:var(--curve)}
-  .hint{position:absolute;top:20px;right:24px;color:var(--dim);font-size:.75rem;font-family:"Courier New",monospace;text-align:right;line-height:1.6}
+  .hint{position:absolute;top:20px;right:24px;color:var(--dim);font-size:.95rem;font-family:"Courier New",monospace;text-align:right;line-height:1.6}
 </style>
 </head>
 <body>
@@ -77,8 +77,8 @@ function dot3(x,y,z,col,r=4){
 }
 function label(x,y,z,txt,col='#7b83ad'){
   const p=proj(x,y,z);
-  ctx.fillStyle=col;ctx.font='13px Courier New';
-  ctx.fillText(txt,p[0]+7,p[1]-7);
+  ctx.fillStyle=col;ctx.font=`${Math.max(16,Math.round(W/80))}px Courier New`;
+  ctx.fillText(txt,p[0]+9,p[1]-9);
 }
 function curve3(fn,t0,t1,col,w=1.5,alpha=1,dash){
   const N=Math.max(2,Math.floor((t1-t0)*20));
